@@ -1,0 +1,30 @@
+server:
+  port: 8004
+logging:
+  file:
+    path: log
+spring:
+  redis:
+    # 单机配置
+    host: localhost
+    port: 6379
+#    password:
+     # 哨兵配置
+#    sentinel:
+#      master: gct
+#      nodes: 10.100.2.1:26379,10.100.2.2:26379,10.100.2.3:26379
+  application.name: accesslog-processing-simple
+  datasource:
+    clickhouse:
+      jdbc-url: jdbc:clickhouse://localhost:8123/default
+      username: default
+      password:
+accesslog:
+  thread-count: 2
+  kafka-bootstrap-servers: localhost:9092
+  kafka-consumer-group-id: accesslog-group
+  topic-name: accesslog
+  nginx_access_table: gp_nginx_access
+  accesslog-grok: '%{IPORHOST:remote_addr} - \[%{DATA:x_forward_for}\] - %{DATA:remote_user} \[%{HTTPDATE:time}\] \"%{WORD:request_method} %{DATA:uri} HTTP/%{NUMBER:http_version}\" %{NUMBER:status} %{NUMBER:body_sent_bytes} \"%{DATA:http_referrer}\" \"%{DATA:http_user_agent}\" %{NUMBER:request_length} %{NUMBER:request_time} \[%{DATA:proxy_upstream_name}\] %{DATA:upstream_addr} %{DATA:upstream_response_length} %{DATA:upstream_response_time} %{DATA:upstream_status} %{DATA:req_id} %{DATA:host} \[\]'
+  server-name: accesslog
+  application-code: accesslog
