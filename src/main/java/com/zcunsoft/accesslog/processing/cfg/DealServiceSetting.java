@@ -2,7 +2,7 @@ package com.zcunsoft.accesslog.processing.cfg;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties("accesslog")
+@ConfigurationProperties("accesslog-processing")
 public class DealServiceSetting {
 
     private String kafkaBootstrapServers;

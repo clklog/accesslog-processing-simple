@@ -1,5 +1,5 @@
 server:
-  port: 8004
+  port: 8003
 logging:
   file:
     path: log
@@ -19,7 +19,7 @@ spring:
       jdbc-url: jdbc:clickhouse://localhost:8123/default
       username: default
       password:
-accesslog:
+accesslog-processing:
   thread-count: 2
   kafka-bootstrap-servers: localhost:9092
   kafka-consumer-group-id: accesslog-group
