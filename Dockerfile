@@ -6,4 +6,5 @@ ENV JAVA_OPTS=
 ENTRYPOINT ["entrypoint.sh"]
 EXPOSE 8003
 COPY docker-entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY ./iplib/* /iplib/
 COPY ${JAR_FILE} app.jar
