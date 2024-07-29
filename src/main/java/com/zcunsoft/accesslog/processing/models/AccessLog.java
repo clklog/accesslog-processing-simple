@@ -12,6 +12,7 @@ public class AccessLog {
     private String upstreamUri;
     private String upstreamAddr;
     private String uri;
+    private String rawUri;
     private String requestMethod;
     private String httpHost;
     private String httpUserAgent;

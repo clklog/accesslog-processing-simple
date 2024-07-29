@@ -1,6 +1,7 @@
 package com.zcunsoft.accesslog.processing.services;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.ip2location.IP2Location;
 import com.ip2location.IPResult;
 import com.zcunsoft.accesslog.processing.cfg.DealServiceSetting;
@@ -90,6 +91,10 @@ public class ReceiveServiceImpl implements IReceiveService {
 
 
     private final Grok accesslogGrok;
+
+    private final TypeReference<AccessLog> accessLogTypeReference = new TypeReference<AccessLog>() {
+    };
+
 
     public ReceiveServiceImpl(ConstsDataHolder constsDataHolder, ObjectMapperUtil objectMapper, StringRedisTemplate queueRedisTemplate, AbstractUserAgentAnalyzer userAgentAnalyzer, JdbcTemplate clickHouseJdbcTemplate, DealServiceSetting serverSetting,
                               Grok accesslogGrok) {
@@ -210,17 +215,13 @@ public class ReceiveServiceImpl implements IReceiveService {
         AccessLog accessLog = null;
 
         try {
-            JsonNode jsonNode = objectMapper.readTree(message);
-            if ("stdout".equalsIgnoreCase(jsonNode.get("stream").asText())) {
-                String log = jsonNode.get("log").asText();
-                accessLog = extractToAccessLog(log, accesslogGrok, userAgentAnalyzer);
-                if (StringUtils.isNotBlank(accessLog.getRemoteAddr())) {
-                    Region region = analysisRegionFromIp(accessLog.getRemoteAddr());
+            accessLog = extractToAccessLog(message, userAgentAnalyzer);
+            if (accessLog != null && StringUtils.isNotBlank(accessLog.getRemoteAddr())) {
+                Region region = analysisRegionFromIp(accessLog.getRemoteAddr());
 
-                    accessLog.setCountry(region.getCountry());
-                    accessLog.setProvince(region.getProvince());
-                    accessLog.setCity(region.getCity());
-                }
+                accessLog.setCountry(region.getCountry());
+                accessLog.setProvince(region.getProvince());
+                accessLog.setCity(region.getCity());
             }
         } catch (Exception ex) {
             logger.error("analysisData err", ex);
@@ -246,7 +247,7 @@ public class ReceiveServiceImpl implements IReceiveService {
         String sql = "insert into " + serverSetting.getNginxAccessTable() + " (country,upstream_uri,upstream_addr,uri,request_method,http_host,http_user_agent," +
                 "stat_hour,manufacturer,remote_user,upstream_status,request_time,province,browser,model,browser_version," +
                 "brand,remote_addr,stat_date,stat_min,time_local,http_version,city,body_sent_bytes,http_referrer," +
-                "server_name,upstream_response_time,status,application_code) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                "server_name,upstream_response_time,status,application_code,create_time,raw_uri) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         clickHouseJdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
@@ -281,6 +282,8 @@ public class ReceiveServiceImpl implements IReceiveService {
                 pst.setString(27, StringUtils.defaultString(accessLog.getUpstreamResponseTime()));
                 pst.setString(28, accessLog.getStatus());
                 pst.setString(29, accessLog.getApplicationCode());
+                pst.setTimestamp(30, new Timestamp(System.currentTimeMillis()));
+                pst.setString(31, accessLog.getRawUri());
             }
 
             @Override
@@ -458,6 +461,57 @@ public class ReceiveServiceImpl implements IReceiveService {
             accessLog.setManufacturer(brand);
         }
 
+        return accessLog;
+    }
+
+    public AccessLog extractToAccessLog(String log, AbstractUserAgentAnalyzer userAgentAnalyzer) throws ParseException {
+        AccessLog accessLog = null;
+        try {
+            accessLog = objectMapper.readValue(log, accessLogTypeReference);
+
+            accessLog.setRawUri(accessLog.getUri());
+            String uri = accessLog.getUri();
+            int index = uri.indexOf("?");
+            if (index != -1) {
+                uri = uri.substring(0, index);
+            }
+            accessLog.setUri(uri);
+
+            if (StringUtils.isNotBlank(accessLog.getHttpUserAgent())) {
+                UserAgent userAgent = userAgentAnalyzer.parse(accessLog.getHttpUserAgent());
+
+                String browser = "";
+                AgentField browserField = userAgent.get(UserAgent.AGENT_NAME);
+                if (!browserField.isDefaultValue()) {
+                    browser = browserField.getValue();
+                }
+                accessLog.setBrowser(browser);
+
+                String browserVersion = "";
+                AgentField browserVersionField = userAgent.get(UserAgent.AGENT_NAME_VERSION);
+                if (!browserVersionField.isDefaultValue()) {
+                    browserVersion = browserVersionField.getValue();
+                }
+                accessLog.setBrowserVersion(browserVersion);
+
+                String model = "";
+                AgentField deviceName = userAgent.get(UserAgent.DEVICE_NAME);
+                if (!deviceName.isDefaultValue()) {
+                    model = deviceName.getValue();
+                }
+                accessLog.setModel(model);
+
+                String brand = "";
+                AgentField deviceBrand = userAgent.get(UserAgent.DEVICE_BRAND);
+                if (!deviceBrand.isDefaultValue()) {
+                    brand = deviceBrand.getValue();
+                }
+                accessLog.setBrand(brand);
+                accessLog.setManufacturer(brand);
+            }
+        } catch (JsonProcessingException e) {
+            logger.error("extractToAccessLog err" + log, e);
+        }
         return accessLog;
     }
 
