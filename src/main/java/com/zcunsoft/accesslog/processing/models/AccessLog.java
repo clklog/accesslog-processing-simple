@@ -3,7 +3,6 @@ package com.zcunsoft.accesslog.processing.models;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
-import java.sql.Date;
 import java.sql.Timestamp;
 
 @Data
@@ -27,7 +26,7 @@ public class AccessLog {
     private String browserVersion;
     private String brand;
     private String remoteAddr;
-    private Date statDate;
+    private String statDate;
     private String statMin;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", shape = JsonFormat.Shape.STRING)
     private Timestamp time;

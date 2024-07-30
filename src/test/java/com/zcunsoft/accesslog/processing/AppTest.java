@@ -15,7 +15,6 @@ import java.lang.reflect.Method;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
@@ -59,20 +58,14 @@ public class AppTest {
     @TestFactory
     Collection<DynamicTest> dynamicTestExtractToAccesslog() throws Exception {
 
-        String log = "183.195.96.16 - [183.195.96.16] - - [18/Jan/2024:09:10:49 +0800] \"POST /pub/goods/comments/unreadcount?time=123 HTTP/2.0\" 200 64 \"https://app.accesslog.com/\" \"Mozilla/5.0 (iPhone; CPU iPhone OS 17_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Kuang/2.2.0\" 47 0.004 [accesslog-backend-80] 10.245.0.182:8181 75 0.014 200 a9ade1763ef2ddf3e54465a6b2a5b179 accesslog.com []";
-
-        HashMap<String, String> hashMapLog = new HashMap<>();
-        hashMapLog.put("stream", "stdout");
-        hashMapLog.put("log", log);
-
-        String message = objectMapper.writeValueAsString(hashMapLog);
-
+        String message = "{\"application_code\":\"accesslog\",\"http_referrer\":\"https://app.accesslog.com/\",\"http_user_agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 17_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Kuang/2.2.0\",\"port\":\"80\",\"remote_addr\":\"183.195.96.16\",\"remote_user\":\"-\",\"request_method\":\"POST\",\"request_time\":4.0,\"server_name\":\"accesslog_server\",\"stat_date\":\"2024-01-18\",\"stat_hour\":\"09\",\"stat_min\":\"09:10\",\"status\":\"200\",\"substatus\":\"0\",\"time\":\"2024-01-18 09:10:49\",\"time_local\":\"2024-01-18T01:10:49+08:00\",\"uri\":\"/pub/goods/comments/unreadcount\",\"uri_query\":\"-\",\"uri_stem\":\"/pub/goods/comments/unreadcount\",\"win32_status\":\"0\",\"upstream_addr\":\"10.245.0.182:8181\",\"http_host\":\"accesslog.com\",\"upstream_status\":\"200\",\"http_version\":\"2.0\",\"body_sent_bytes\":\"64\",\"upstream_response_time\":\"14\"}";
         AccessLog actualLog = logService.analysisData(message);
         Object[] actualArr = getFieldsInfo(actualLog).toArray();
 
         AccessLog expectedLog = new AccessLog();
         expectedLog.setUpstreamAddr("10.245.0.182:8181");
         expectedLog.setUri("/pub/goods/comments/unreadcount");
+        expectedLog.setRawUri("/pub/goods/comments/unreadcount");
         expectedLog.setRequestMethod("POST");
         expectedLog.setHttpHost("accesslog.com");
         expectedLog.setHttpUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 17_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Kuang/2.2.0");
@@ -85,12 +78,12 @@ public class AppTest {
         expectedLog.setUpstreamResponseTime("14");
         expectedLog.setStatus("200");
         expectedLog.setRemoteAddr("183.195.96.16");
-        expectedLog.setStatDate(java.sql.Date.valueOf("2024-01-18"));
+        expectedLog.setStatDate("2024-01-18");
         expectedLog.setStatHour("09");
         expectedLog.setStatMin("09:10");
         expectedLog.setTime(Timestamp.valueOf("2024-01-18 09:10:49"));
-        expectedLog.setServerName(serverSetting.getServerName());
-        expectedLog.setApplicationCode(serverSetting.getApplicationCode());
+        expectedLog.setServerName("accesslog_server");
+        expectedLog.setApplicationCode("accesslog");
         expectedLog.setBrowser("Kuang");
         expectedLog.setBrowserVersion("Kuang 2.2.0");
         expectedLog.setModel("Apple iPhone");
