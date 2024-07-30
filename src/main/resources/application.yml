@@ -25,6 +25,3 @@ accesslog-processing:
   kafka-consumer-group-id: accesslog-group
   topic-name: accesslog
   nginx_access_table: gp_nginx_access
-  accesslog-grok: '%{IPORHOST:remote_addr} - \[%{DATA:x_forward_for}\] - %{DATA:remote_user} \[%{HTTPDATE:time}\] \"%{WORD:request_method} %{DATA:uri} HTTP/%{NUMBER:http_version}\" %{NUMBER:status} %{NUMBER:body_sent_bytes} \"%{DATA:http_referrer}\" \"%{DATA:http_user_agent}\" %{NUMBER:request_length} %{NUMBER:request_time} \[%{DATA:proxy_upstream_name}\] %{DATA:upstream_addr} %{DATA:upstream_response_length} %{DATA:upstream_response_time} %{DATA:upstream_status} %{DATA:req_id} %{DATA:host} \[\]'
-  server-name: accesslog
-  application-code: accesslog

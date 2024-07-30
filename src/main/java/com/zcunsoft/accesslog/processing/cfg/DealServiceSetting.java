@@ -11,19 +11,11 @@ public class DealServiceSetting {
 
     private int threadCount = 6;
 
-
     private String nginxAccessTable = "";
 
     private String topicName = "accesslog";
 
-
     private String resourcePath = "";
-
-    private String accesslogGrok;
-
-    private String serverName = "";
-
-    private String applicationCode = "";
 
 
     public String getKafkaBootstrapServers() {
@@ -74,27 +66,4 @@ public class DealServiceSetting {
         this.resourcePath = resourcePath;
     }
 
-    public String getAccesslogGrok() {
-        return accesslogGrok;
-    }
-
-    public void setAccesslogGrok(String accesslogGrok) {
-        this.accesslogGrok = accesslogGrok;
-    }
-
-    public String getServerName() {
-        return serverName;
-    }
-
-    public void setServerName(String serverName) {
-        this.serverName = serverName;
-    }
-
-    public String getApplicationCode() {
-        return applicationCode;
-    }
-
-    public void setApplicationCode(String applicationCode) {
-        this.applicationCode = applicationCode;
-    }
 }
