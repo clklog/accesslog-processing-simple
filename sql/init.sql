@@ -31,7 +31,8 @@ CREATE TABLE accesslogdb.gp_nginx_access
     `upstream_response_time` String,
     `status` String,
     `application_code` String,
-    `create_time` DateTime64(3) DEFAULT now()
+    `create_time` DateTime64(3) DEFAULT now(),
+    `raw_uri` String
 )
     ENGINE = MergeTree
 PARTITION BY stat_date
