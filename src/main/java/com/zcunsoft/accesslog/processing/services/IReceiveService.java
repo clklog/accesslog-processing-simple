@@ -14,8 +14,4 @@ public interface IReceiveService {
 
     void loadCity();
 
-    void loadProvince();
-
-    void loadCountry();
-
 }

@@ -7,17 +7,18 @@ import com.zcunsoft.accesslog.processing.cfg.DealServiceSetting;
 import com.zcunsoft.accesslog.processing.handlers.ConstsDataHolder;
 import com.zcunsoft.accesslog.processing.models.AccessLog;
 import com.zcunsoft.accesslog.processing.models.Region;
+import com.zcunsoft.accesslog.processing.utils.IOUtil;
 import com.zcunsoft.accesslog.processing.utils.ObjectMapperUtil;
 import io.krakens.grok.api.Grok;
 import io.krakens.grok.api.Match;
 import nl.basjes.parse.useragent.AbstractUserAgentAnalyzer;
 import nl.basjes.parse.useragent.AgentField;
 import nl.basjes.parse.useragent.UserAgent;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.InetAddressValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -25,7 +26,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -129,7 +129,7 @@ public class ReceiveServiceImpl implements IReceiveService {
                 rec = analysisIp(false, clientIp);
             }
 
-            if (rec != null && rec.getStatus().equalsIgnoreCase("OK")) {
+            if (rec != null && "OK".equalsIgnoreCase(rec.getStatus())) {
                 String country = rec.getCountryShort().toLowerCase(Locale.ROOT);
                 String province = rec.getRegion().toLowerCase(Locale.ROOT);
                 String city = rec.getCity().toLowerCase(Locale.ROOT);
@@ -157,24 +157,13 @@ public class ReceiveServiceImpl implements IReceiveService {
                         province = "macau";
                         city = "macau";
                     }
-                    if (constsDataHolder.getHtForCountry().containsKey(country)) {
-                        country = constsDataHolder.getHtForCountry().get(country);
-                    }
-                }
-                if (StringUtils.isNotBlank(province)) {
-                    if (constsDataHolder.getHtForProvince().containsKey(province)) {
-                        province = constsDataHolder.getHtForProvince().get(province);
-                    }
-                }
-                if (StringUtils.isNotBlank(city)) {
-                    if (constsDataHolder.getHtForCity().containsKey(city)) {
-                        city = constsDataHolder.getHtForCity().get(city);
-                    }
                 }
 
                 region.setCountry(country);
                 region.setProvince(province);
                 region.setCity(city);
+
+                region = translateRegion(region);
 
                 String sbRegion = region.getClientIp() + "," + region.getCountry() + "," + region.getProvince() + "," + region.getCity();
                 queueRedisTemplate.opsForHash().put("ClientIpRegionHash", region.getClientIp(), sbRegion);
@@ -203,6 +192,37 @@ public class ReceiveServiceImpl implements IReceiveService {
             logger.error("query ip error ", e);
         }
         return rec;
+    }
+
+    private Region translateRegion(Region region) {
+        Region translatedRegion = null;
+        if (region != null) {
+            translatedRegion = new Region();
+            BeanUtils.copyProperties(region, translatedRegion);
+
+            String country = region.getCountry();
+            String province = region.getProvince();
+            String city = region.getCity();
+
+            if (StringUtils.isNotBlank(province)) {
+                String provinceKey = country + "_" + province;
+                String cityKey = country + "_" + province + "_" + city;
+                if (constsDataHolder.getHtForCity().containsKey(cityKey)) {
+                    city = constsDataHolder.getHtForCity().get(cityKey);
+                }
+                if (constsDataHolder.getHtForCity().containsKey(provinceKey)) {
+                    province = constsDataHolder.getHtForCity().get(provinceKey);
+                }
+            }
+
+            if (constsDataHolder.getHtForCity().containsKey(country)) {
+                country = constsDataHolder.getHtForCity().get(country);
+            }
+            translatedRegion.setCountry(country);
+            translatedRegion.setProvince(province);
+            translatedRegion.setCity(city);
+        }
+        return translatedRegion;
     }
 
     @Override
@@ -293,62 +313,40 @@ public class ReceiveServiceImpl implements IReceiveService {
     @Override
     public void loadCity() {
         try {
-            List<String> lineCityList = FileUtils.readLines(new File(
-                    getResourcePath() + File.separator + "iplib" + File.separator
-                            + "chinacity.txt"), Charset.forName("GB2312"));
-
             ConcurrentMap<String, String> htForCity = constsDataHolder.getHtForCity();
-            for (String line : lineCityList) {
-
-                String[] pair = line.split(",");
-                if (pair.length >= 2) {
+            List<String> regionEngChsList = IOUtil.readAllLines(System.getProperty("user.dir") + File.separator + "iplib" + File.separator
+                    + "country-eng-chs-map.txt");
+            if (!regionEngChsList.isEmpty()) {
+                for (String line : regionEngChsList) {
+                    String[] pair = line.split("-");
                     htForCity.put(pair[0].toLowerCase(Locale.ROOT), pair[1]);
                 }
             }
+
+            List<String> cityEngChsList = IOUtil.readAllLines(System.getProperty("user.dir") + File.separator + "iplib" + File.separator
+                    + "city-eng-chs-map.txt");
+
+            for (String line : cityEngChsList) {
+                String[] pair = line.split(";");
+                String country = pair[0].toLowerCase(Locale.ROOT);
+                String province = pair[1];
+                String[] provinceArr = province.split("-", -1);
+                String key = country + "_" + provinceArr[0].toLowerCase(Locale.ROOT);
+                htForCity.put(key, provinceArr[1]);
+                for (int i = 1; i < pair.length; i++) {
+                    String district = pair[i];
+                    String[] districtArr = district.split("-", -1);
+                    String[] cities = districtArr[0].split(",", -1);
+                    for (String city : cities) {
+                        htForCity.put(key + "_" + city.toLowerCase(Locale.ROOT), districtArr[1]);
+                    }
+                }
+            }
+
         } catch (Exception ex) {
             logger.error("load City err", ex);
         }
     }
-
-    @Override
-    public void loadProvince() {
-        try {
-            List<String> lineProvinceList = FileUtils.readLines(new File(getResourcePath() + File.separator + "iplib" + File.separator
-                    + "chinaprovince.txt"), Charset.forName("GB2312"));
-
-            ConcurrentMap<String, String> htForProvince = constsDataHolder.getHtForProvince();
-            for (String line : lineProvinceList) {
-
-                String[] pair = line.split(",");
-                if (pair.length >= 2) {
-                    htForProvince.put(pair[0].toLowerCase(Locale.ROOT), pair[1]);
-                }
-            }
-        } catch (Exception ex) {
-            logger.error("load Province err", ex);
-        }
-    }
-
-    @Override
-    public void loadCountry() {
-        try {
-            List<String> countryList = FileUtils.readLines(new File(getResourcePath() + File.separator + "iplib" + File.separator
-                    + "country.txt"), Charset.forName("GB2312"));
-
-            ConcurrentMap<String, String> htForCountry = constsDataHolder.getHtForCountry();
-            for (String line : countryList) {
-
-                String[] pair = line.split(",");
-                if (pair.length >= 2) {
-                    htForCountry.put(pair[0].toLowerCase(Locale.ROOT), pair[1]);
-                }
-            }
-
-        } catch (Exception ex) {
-            logger.error("load Country err", ex);
-        }
-    }
-
 
     public AccessLog extractToAccessLog(String log, Grok grok, AbstractUserAgentAnalyzer userAgentAnalyzer) throws ParseException {
         AccessLog accessLog = new AccessLog();

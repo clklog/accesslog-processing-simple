@@ -37,8 +37,6 @@ public class LoadConstProcessBoss {
 
     private void work() {
         try {
-            logService.loadCountry();
-            logService.loadProvince();
             logService.loadCity();
             Thread.sleep(60000);
         } catch (InterruptedException e) {
