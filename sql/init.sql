@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS gp_nginx_access
     time_local DateTime64(3),
     http_version LowCardinality(String),
     city String,
-    body_sent_bytes UInt64,
+    body_sent_bytes String,
     http_referrer String,
     server_name LowCardinality(String),
     upstream_response_time String,
