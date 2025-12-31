@@ -43,5 +43,5 @@ CREATE TABLE IF NOT EXISTS tbl_app
     owner String,
     create_time DateTime64(3)
 )
-ENGINE = ReplacingMergeTree
+ENGINE = MergeTree
 ORDER BY app_code;
